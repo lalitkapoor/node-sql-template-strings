@@ -36,7 +36,7 @@
     "eslint": "^3.4.0",
     "mocha": "^3.0.2",
     "mysql": "^2.11.1",
-    "mysql2": "^1.0.0",
+    "mysql2": "github:sidorares/node-mysql2#promise-object-params",
     "nyc": "^8.1.0",
     "pg": "^6.1.0",
     "sequelize": "^3.24.3",
