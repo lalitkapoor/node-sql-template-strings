@@ -13,8 +13,8 @@
   },
   "scripts": {
     "lint": "eslint index.js test",
-    "test": "mocha test",
-    "cover": "nyc --all mocha test",
+    "test": "mocha \"test/**/*.js\"",
+    "cover": "nyc --all mocha \"test/**/*.js\"",
     "typedoc": "typedoc --module es2015 --target es2015 --includeDeclarations --mode file --readme none --out typedoc index.d.ts"
   },
   "keywords": [
@@ -35,7 +35,11 @@
   "devDependencies": {
     "eslint": "^3.4.0",
     "mocha": "^3.0.2",
+    "mysql": "^2.11.1",
+    "mysql2": "^1.0.0",
     "nyc": "^8.1.0",
+    "pg": "^6.1.0",
+    "sequelize": "^3.24.3",
     "typedoc": "^0.4.4"
   },
   "nyc": {
