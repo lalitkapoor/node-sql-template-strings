@@ -3,21 +3,49 @@
 class SQLStatement {
   /**
    * @param {string[]} strings
-   * @param {any[]} values
+   * @param {any[]} params
    */
-  constructor(strings, values) {
+  constructor(strings, params) {
     this.strings = strings
-    this.values = values
+    this.params = params
   }
 
-  /** Returns the SQL Statement for Sequelize */
-  get query() {
-    return this.bind ? this.text : this.sql
-  }
-
-  /** Returns the SQL Statement for node-postgres */
   get text() {
-    return this.strings.reduce((prev, curr, i) => prev + '$' + i + curr)
+    let parameterIndex = 0
+    let text = ""
+
+    let build = function(sqlStatement) {
+      sqlStatement.strings.forEach((string, index) => {
+        text += string
+        if (index >= sqlStatement.params.length) return // no more values left
+        let param = sqlStatement.params[index]
+        if (param instanceof SQLStatement) {
+          build(param)
+        } else {
+          text += `$${++parameterIndex}`
+        }
+      })
+    }
+
+    build(this)
+    return text
+  }
+
+  get values() {
+    let values = []
+
+    let build = function(sqlStatement) {
+      sqlStatement.params.forEach((param) => {
+        if (param instanceof SQLStatement) {
+          build(param)
+        } else {
+          values.push(param)
+        }
+      })
+    }
+
+    build(this)
+    return values
   }
 
   /**
@@ -28,29 +56,9 @@ class SQLStatement {
     if (statement instanceof SQLStatement) {
       this.strings[this.strings.length - 1] += statement.strings[0]
       this.strings.push.apply(this.strings, statement.strings.slice(1))
-      ;(this.values || this.bind).push.apply(this.values, statement.values)
+      this.params.push.apply(this.params, statement.values)
     } else {
       this.strings[this.strings.length - 1] += statement
-    }
-    return this
-  }
-
-  /**
-   * Use a prepared statement with Sequelize.
-   * Makes `query` return a query with `$n` syntax instead of `?`  and switches the `values` key name to `bind`
-   * @param {boolean} [value=true] value If omitted, defaults to `true`
-   * @returns this
-   */
-  useBind(value) {
-    if (value === undefined) {
-      value = true
-    }
-    if (value && !this.bind) {
-      this.bind = this.values
-      delete this.values
-    } else if (!value && this.bind) {
-      this.values = this.bind
-      delete this.bind
     }
     return this
   }
@@ -65,21 +73,27 @@ class SQLStatement {
   }
 }
 
-/** Returns the SQL Statement for mysql */
-Object.defineProperty(SQLStatement.prototype, 'sql', {
-  enumerable: true,
-  get() {
-    return this.strings.join('?')
-  },
-})
-
 /**
  * @param {string[]} strings
- * @param {...any} values
+ * @param {...any} params
  * @returns {SQLStatement}
  */
 function SQL(strings) {
   return new SQLStatement(strings.slice(0), Array.from(arguments).slice(1))
+}
+
+SQL.values = function(matrix) {
+  let statements = matrix.map((row) => {
+    let strings = ['(']
+    row.forEach((element) => strings.push(', '))
+    strings.pop()
+    strings.push(')')
+    return new SQLStatement(strings, row)
+  })
+  
+  return statements.reduce((prev, curr) => {
+    return prev.append(', ').append(curr)
+  })
 }
 
 module.exports = SQL
