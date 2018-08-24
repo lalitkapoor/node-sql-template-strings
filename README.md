@@ -56,6 +56,11 @@ query.text   // => 'SELECT author FROM books WHERE name = $1 AND author = $2'
 query.values // => ['harry potter', 'J. K. Rowling']
 ```
 
+## Inserting multiple values with `SQL.values()`
+```js
+db.query(SQL`INSERT INTO values (${SQL.values([ [1,2,3], [4,5,6] ])})`
+```
+
 ## Building complex queries with `append()`
 It is also possible to build queries by appending another query or a string with the `append()` method (returns `this` for chaining):
 
