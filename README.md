@@ -14,7 +14,7 @@
 [API Documentation](http://node-sql-template-strings.surge.sh/)
 
 A simple yet powerful module to allow you to use ES6 tagged template strings for prepared/escaped statements.  
-Works with [mysql](https://www.npmjs.com/package/mysql), [mysql2](https://www.npmjs.com/package/mysql2), [postgres](https://www.npmjs.com/package/pg) and [sequelize](https://www.npmjs.com/package/sequelize).
+Works with [postgres](https://www.npmjs.com/package/pg).
 
 Example for escaping queries (callbacks omitted):
 
@@ -24,20 +24,9 @@ const SQL = require('sql-template-strings')
 const book = 'harry potter'
 const author = 'J. K. Rowling'
 
-// mysql:
-mysql.query('SELECT author FROM books WHERE name = ? AND author = ?', [book, author])
-// is equivalent to
-mysql.query(SQL`SELECT author FROM books WHERE name = ${book} AND author = ${author}`)
-
-// postgres:
 pg.query('SELECT author FROM books WHERE name = $1 AND author = $2', [book, author])
 // is equivalent to
 pg.query(SQL`SELECT author FROM books WHERE name = ${book} AND author = ${author}`)
-
-// sequelize:
-sequelize.query('SELECT author FROM books WHERE name = ? AND author = ?', {replacements: [book, author]})
-// is equivalent to
-sequelize.query(SQL`SELECT author FROM books WHERE name = ${book} AND author = ${author}`)
 ```
 
 This might not seem like a big deal, but when you do an INSERT with a lot columns writing all the placeholders becomes a nightmare:
@@ -58,13 +47,12 @@ db.query(SQL`
 Also template strings support line breaks, while normal strings do not.
 
 ## How it works
-The SQL template string tag transforms the template string and returns an _object_ that is understood by both mysql and postgres:
+The SQL template string tag transforms the template string and returns an _object_ that is understood by postgres:
 
 ```js
 const query = SQL`SELECT author FROM books WHERE name = ${book} AND author = ${author}`
 typeof query // => 'object'
 query.text   // => 'SELECT author FROM books WHERE name = $1 AND author = $2'
-query.sql    // => 'SELECT author FROM books WHERE name = ? AND author = ?'
 query.values // => ['harry potter', 'J. K. Rowling']
 ```
 
@@ -74,7 +62,6 @@ It is also possible to build queries by appending another query or a string with
 ```js
 query.append(SQL`AND genre = ${genre}`).append(' ORDER BY rating')
 query.text   // => 'SELECT author FROM books WHERE name = $1 AND author = $2 AND genre = $3 ORDER BY rating'
-query.sql    // => 'SELECT author FROM books WHERE name = ? AND author = ? AND genre = ? ORDER BY rating'
 query.values // => ['harry potter', 'J. K. Rowling', 'Fantasy'] ORDER BY rating
 ```
 
@@ -92,7 +79,7 @@ query.append(SQL` LIMIT 10 OFFSET ${params.offset || 0}`)
 Some values cannot be replaced by placeholders in prepared statements, like table names.
 `append()` replaces the `SQL.raw()` syntax from version 1, just pass a string and it will get appended raw.
 
- > Please note that when inserting raw values, you are responsible for quoting and escaping these values with proper escaping functions first if they come from user input (E.g. `mysql.escapeId()` and `pg.escapeIdentifier()`).
+ > Please note that when inserting raw values, you are responsible for quoting and escaping these values with proper escaping functions first if they come from user input (E.g. `pg.escapeIdentifier()`).
  > Also, executing many prepared statements with changing raw values in a loop will quickly overflow the prepared statement buffer (and destroy their performance benefit), so be careful.
 
 ```js
@@ -103,7 +90,6 @@ const column = 'author'
 db.query(SQL`SELECT * FROM "`.append(table).append(SQL`" WHERE author = ${author} ORDER BY ${column} `).append(order))
 
 // escape user input manually
-mysql.query(SQL`SELECT * FROM `.append(mysql.escapeId(someUserInput)).append(SQL` WHERE name = ${book} ORDER BY ${column} `).append(order))
 pg.query(SQL`SELECT * FROM `.append(pg.escapeIdentifier(someUserInput)).append(SQL` WHERE name = ${book} ORDER BY ${column} `).append(order))
 ```
 
@@ -130,28 +116,6 @@ pg.query(SQL`SELECT author FROM books WHERE name = ${book}`.setName('my_query'))
 ```
 You can also set the name property on the statement object directly or use `Object.assign()`.
 
-## Bound Statements in sequelize
-By default, Sequelize will escape replacements on the client.
-To switch to using a bound statement in Sequelize, call `useBind()`.
-The boolean parameter defaults to `true`.
-Like all methods, returns `this` for chaining.
-Please note that as long as the bound mode is active, the statement object only supports Sequelize, not the other drivers.
-
-```js
-// old way
-sequelize.query('SELECT author FROM books WHERE name = ? AND author = ?', {bind: [book, author]})
-
-// with template strings
-sequelize.query(SQL`SELECT author FROM books WHERE name = ${book}`.useBind(true))
-sequelize.query(SQL`SELECT author FROM books WHERE name = ${book}`.useBind()) // the same
-
-// works with append (you can call useBind at any time)
-const query = SQL`SELECT * FROM books`.useBind(true)
-if (params.name) {
-  query.append(SQL` WHERE name = ${params.name}`)
-}
-query.append(SQL` LIMIT 10 OFFSET ${params.offset || 0}`)
-```
 
 ## Editor Integration
 
